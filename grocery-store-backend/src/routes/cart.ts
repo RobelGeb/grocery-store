@@ -12,7 +12,7 @@ router.get('/:userId', async (req: Request, res: Response) => {
             p.id as product_id, p.name, p.price, p.image_url,
             i.quantity as available_stock
      FROM cart_items ci
-     JOIN products p ON ci.product_id = p.id
+     JOIN products p ON ci.product_id = p.id 
      JOIN inventory i ON p.id = i.product_id
      WHERE ci.user_id = $1`,
     [userId]

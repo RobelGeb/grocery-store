@@ -24,7 +24,7 @@ A step-by-step guide for building a full-stack grocery store website with invent
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Frontend | React 18, TypeScript, Vite, CSS Modules |
 | Backend | Node.js, Express, TypeScript |
 | Database (Primary) | AWS RDS PostgreSQL (db.t4g.micro) |
 | Cache | Redis (Railway service) |
@@ -87,18 +87,16 @@ grocery-store-backend/    ← Node.js + Express + TypeScript
 npm create vite@latest grocery-store-frontend -- --template react-ts
 cd grocery-store-frontend
 npm install
-npm install tailwindcss @tailwindcss/vite
 ```
 
-Configure Tailwind in `vite.config.ts`:
+CSS Modules are built into Vite — no additional packages needed. Configure `vite.config.ts`:
 
 ```typescript
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   server: {
     proxy: {
       '/api': 'http://localhost:3000',  // Forward API calls to Express in development
@@ -765,8 +763,25 @@ export const api = {
 
 ### 6.3 Stock Badge Component
 
+```css
+/* src/components/StockBadge.module.css */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  border-radius: 4px;
+}
+.inStock    { background-color: #16a34a; }
+.lowStock   { background-color: #d97706; }
+.outOfStock { background-color: #ef4444; }
+```
+
 ```typescript
 // src/components/StockBadge.tsx
+import styles from './StockBadge.module.css';
+
 interface StockBadgeProps {
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
   quantity?: number;
@@ -774,35 +789,60 @@ interface StockBadgeProps {
 
 export function StockBadge({ status, quantity }: StockBadgeProps) {
   if (status === 'out_of_stock') {
-    return (
-      <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-red-500 rounded">
-        Out of Stock
-      </span>
-    );
+    return <span className={`${styles.badge} ${styles.outOfStock}`}>Out of Stock</span>;
   }
 
   if (status === 'low_stock') {
     return (
-      <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-amber-500 rounded">
+      <span className={`${styles.badge} ${styles.lowStock}`}>
         Low Stock {quantity !== undefined && `(${quantity} left)`}
       </span>
     );
   }
 
-  return (
-    <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-green-500 rounded">
-      In Stock
-    </span>
-  );
+  return <span className={`${styles.badge} ${styles.inStock}`}>In Stock</span>;
 }
 ```
 
 ### 6.4 Product Card Component
 
+```css
+/* src/components/ProductCard.module.css */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); }
+.image    { width: 100%; height: 192px; object-fit: cover; }
+.body     { padding: 16px; }
+.category { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.name     { font-weight: 600; color: #111827; margin-bottom: 4px; }
+.price    { font-size: 1.125rem; font-weight: 700; color: #111827; margin-bottom: 12px; }
+.footer   { display: flex; align-items: center; justify-content: space-between; }
+.addButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background-color: #16a34a;
+  color: white;
+}
+.addButton:hover:not(:disabled) { background-color: #15803d; }
+.addButton:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+```
+
 ```typescript
 // src/components/ProductCard.tsx
 import { Product } from '../types';
 import { StockBadge } from './StockBadge';
+import styles from './ProductCard.module.css';
 
 interface ProductCardProps {
   product: Product;
@@ -813,31 +853,22 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const isOutOfStock = product.stock_status === 'out_of_stock';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+    <div className={styles.card}>
       <img
         src={product.image_url || '/placeholder.jpg'}
         alt={product.name}
-        className="w-full h-48 object-cover"
+        className={styles.image}
       />
-      <div className="p-4">
-        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-          {product.category_name}
-        </p>
-        <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
-        <p className="text-lg font-bold text-gray-900 mb-3">
-          ${product.price.toFixed(2)}
-        </p>
-
-        <div className="flex items-center justify-between">
+      <div className={styles.body}>
+        <p className={styles.category}>{product.category_name}</p>
+        <h3 className={styles.name}>{product.name}</h3>
+        <p className={styles.price}>${product.price.toFixed(2)}</p>
+        <div className={styles.footer}>
           <StockBadge status={product.stock_status} quantity={product.quantity} />
           <button
             onClick={() => onAddToCart(product.id)}
             disabled={isOutOfStock}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isOutOfStock
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
+            className={styles.addButton}
           >
             {isOutOfStock ? 'Unavailable' : 'Add to Cart'}
           </button>
@@ -850,12 +881,38 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
 ### 6.5 Product List Page
 
+```css
+/* src/pages/ProductsPage.module.css */
+.page    { max-width: 1280px; margin: 0 auto; padding: 32px 16px; }
+.filters { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+.filterBtn {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+.filterBtn:hover  { background-color: #e5e7eb; }
+.filterBtn.active { background-color: #16a34a; color: white; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+}
+.loading { text-align: center; padding: 48px 0; color: #6b7280; }
+```
+
 ```typescript
 // src/pages/ProductsPage.tsx
 import { useState, useEffect } from 'react';
 import { Product, Category } from '../types';
 import { api } from '../api';
 import { ProductCard } from '../components/ProductCard';
+import styles from './ProductsPage.module.css';
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -889,16 +946,11 @@ export function ProductsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Category filter */}
-      <div className="flex gap-2 mb-8 flex-wrap">
+    <div className={styles.page}>
+      <div className={styles.filters}>
         <button
           onClick={() => setSelectedCategory('')}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            selectedCategory === ''
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+          className={`${styles.filterBtn}${selectedCategory === '' ? ` ${styles.active}` : ''}`}
         >
           All
         </button>
@@ -906,22 +958,17 @@ export function ProductsPage() {
           <button
             key={cat.id}
             onClick={() => setSelectedCategory(cat.slug)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              selectedCategory === cat.slug
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={`${styles.filterBtn}${selectedCategory === cat.slug ? ` ${styles.active}` : ''}`}
           >
             {cat.name}
           </button>
         ))}
       </div>
 
-      {/* Product grid */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading products...</div>
+        <div className={styles.loading}>Loading products...</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className={styles.grid}>
           {products.map((product) => (
             <ProductCard
               key={product.id}
@@ -935,6 +982,25 @@ export function ProductsPage() {
   );
 }
 ```
+
+### 6.6 Wire Up App.tsx
+
+The default Vite scaffold puts boilerplate content in `src/App.tsx`. Replace it entirely to render `ProductsPage` at the root route:
+
+```typescript
+// src/App.tsx
+import { ProductsPage } from './components/ProductsPage';
+
+function App() {
+  return <ProductsPage />;
+}
+
+export default App;
+```
+
+You can also delete the generated `src/App.css` and remove the default assets (`reactLogo`, `viteLogo`, `heroImg`) once you no longer need them — they are only referenced by the Vite template.
+
+> **Adding more pages later:** When you're ready to add routes (e.g. a product detail page or the admin inventory dashboard), install `react-router-dom` and wrap `App` with a `<BrowserRouter>`. At that point `App.tsx` becomes your route table rather than directly rendering a single page.
 
 ---
 
@@ -954,11 +1020,31 @@ The stock tracking system has three distinct moments where inventory is checked 
 
 Store staff need a way to update stock when new deliveries arrive. Build a simple admin page that calls `PUT /api/inventory/:productId` with an absolute quantity:
 
+```css
+/* src/pages/AdminInventoryPage.module.css */
+.page    { max-width: 896px; margin: 0 auto; padding: 32px 16px; }
+.heading { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; }
+.table   { width: 100%; border-collapse: collapse; }
+.table thead tr { background-color: #f9fafb; }
+.table th { text-align: left; padding: 12px; border: 1px solid #e5e7eb; }
+.table td { padding: 12px; border: 1px solid #e5e7eb; }
+.table tbody tr:hover { background-color: #f9fafb; }
+.sku          { color: #6b7280; font-size: 0.875rem; }
+.inStock      { color: #16a34a; font-size: 0.875rem; font-weight: 500; }
+.lowStock     { color: #d97706; font-size: 0.875rem; font-weight: 500; }
+.outOfStock   { color: #dc2626; font-size: 0.875rem; font-weight: 500; }
+.updateCell   { display: flex; gap: 8px; align-items: center; }
+.qtyInput     { width: 80px; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-size: 0.875rem; }
+.saveBtn      { padding: 4px 12px; background-color: #2563eb; color: white; font-size: 0.875rem; border-radius: 4px; border: none; cursor: pointer; }
+.saveBtn:hover { background-color: #1d4ed8; }
+```
+
 ```typescript
 // src/pages/AdminInventoryPage.tsx
 import { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { api } from '../api';
+import styles from './AdminInventoryPage.module.css';
 
 export function AdminInventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -978,16 +1064,16 @@ export function AdminInventoryPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Inventory Management</h1>
-      <table className="w-full border-collapse">
+    <div className={styles.page}>
+      <h1 className={styles.heading}>Inventory Management</h1>
+      <table className={styles.table}>
         <thead>
-          <tr className="bg-gray-50">
-            <th className="text-left p-3 border">Product</th>
-            <th className="text-left p-3 border">SKU</th>
-            <th className="text-left p-3 border">Current Stock</th>
-            <th className="text-left p-3 border">Status</th>
-            <th className="text-left p-3 border">Update Stock</th>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Current Stock</th>
+            <th>Status</th>
+            <th>Update Stock</th>
           </tr>
         </thead>
         <tbody>
@@ -1013,33 +1099,31 @@ function InventoryRow({
 }) {
   const [newQty, setNewQty] = useState(product.quantity);
 
+  const statusClass =
+    product.stock_status === 'out_of_stock' ? styles.outOfStock :
+    product.stock_status === 'low_stock'    ? styles.lowStock :
+    styles.inStock;
+
   return (
-    <tr className="border-b hover:bg-gray-50">
-      <td className="p-3 border font-medium">{product.name}</td>
-      <td className="p-3 border text-gray-500 text-sm">{product.sku}</td>
-      <td className="p-3 border">{product.quantity}</td>
-      <td className="p-3 border">
-        <span className={`text-sm font-medium ${
-          product.stock_status === 'out_of_stock' ? 'text-red-600' :
-          product.stock_status === 'low_stock' ? 'text-amber-600' :
-          'text-green-600'
-        }`}>
+    <tr>
+      <td>{product.name}</td>
+      <td className={styles.sku}>{product.sku}</td>
+      <td>{product.quantity}</td>
+      <td>
+        <span className={statusClass}>
           {product.stock_status.replace('_', ' ')}
         </span>
       </td>
-      <td className="p-3 border">
-        <div className="flex gap-2 items-center">
+      <td>
+        <div className={styles.updateCell}>
           <input
             type="number"
             min="0"
             value={newQty}
             onChange={(e) => setNewQty(parseInt(e.target.value))}
-            className="w-20 border rounded px-2 py-1 text-sm"
+            className={styles.qtyInput}
           />
-          <button
-            onClick={() => onUpdate(product.id, newQty)}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-          >
+          <button onClick={() => onUpdate(product.id, newQty)} className={styles.saveBtn}>
             Save
           </button>
         </div>

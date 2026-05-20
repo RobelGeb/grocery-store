@@ -1,0 +1,11 @@
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  border-radius: 4px;
+}
+.inStock    { background-color: #16a34a; }
+.lowStock   { background-color: #d97706; }
+.outOfStock { background-color: #ef4444; }

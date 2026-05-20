@@ -1,0 +1,21 @@
+.page    { max-width: 1280px; margin: 0 auto; padding: 32px 16px; }
+.filters { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+.filterBtn {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+.filterBtn:hover  { background-color: #e5e7eb; }
+.filterBtn.active { background-color: #16a34a; color: white; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+}
+.loading { text-align: center; padding: 48px 0; color: #6b7280; }
