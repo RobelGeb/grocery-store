@@ -19,11 +19,11 @@ router.get('/', async (req: Request, res: Response) => {
     ? `SELECT  p.*, c.name as category_name, i.quantity,
         CASE
             WHEN i.quantity = 0 THEN 'out of stock'
-            WHEN i.quntity <= i.low_stock_threshold THEN 'low stock'
+            WHEN i.quantity <= i.low_stock_threshold THEN 'low stock'
             ELSE 'in stock'
         END as stock_status
         FROM products p
-        LEFT JOIN catgories c ON p.category_id = c.id
+        LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN inventory i ON p.id = i.product_id
         WHERE p.is_active = true AND c.slug = $1
         ORDER BY p.name

@@ -20,7 +20,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <div className={styles.body}>
         <p className={styles.category}>{product.category_name}</p>
         <h3 className={styles.name}>{product.name}</h3>
-        <p className={styles.price}>${product.price.toFixed(2)}</p>
+        <p className={styles.price}>${Number(product.price).toFixed(2)}</p>
         <div className={styles.footer}>
           <StockBadge status={product.stock_status} quantity={product.quantity} />
           <button

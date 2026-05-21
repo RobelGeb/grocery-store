@@ -5,36 +5,31 @@ import { ProductCard } from './ProductCard';
 import styles from './ProductsPage.module.css';
 
 export function ProductsPage() {
-    const [products, setProducts] = useState<Product[]>([]);
+    const [{ products, loading }, setProductState] = useState<{ products: Product[]; loading: boolean }>({ products: [], loading: true });
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         api.getCategories().then(setCategories);
-
     }, []);
 
     useEffect(() => {
-        setLoading(true);
         api.getProducts(selectedCategory || undefined)
-            .then(setProducts)
-            .finally(() => setLoading(false));
+            .then(products => setProductState({ products, loading: false }));
+        return () => setProductState({ products: [], loading: true });
     }, [selectedCategory]);
 
     useEffect(() => {
         const handleFocus = () => {
-            api.getProducts(selectedCategory || undefined).then(setProducts);
+            api.getProducts(selectedCategory || undefined)
+                .then(products => setProductState({ products, loading: false }));
         };
         window.addEventListener('focus', handleFocus);
-
-        return () => {
-            window.removeEventListener('focus', handleFocus);
-        }
+        return () => window.removeEventListener('focus', handleFocus);
     }, [selectedCategory]);
 
     const handleAddToCart = async (productId: string) => {
-        await api.addToCart('default_user', productId, 1);
+        await api.addToCart('bdee0e0b-620d-4cfc-a4cb-cbe27bfe8e76', productId, 1);
     };
 
     return (
@@ -62,9 +57,9 @@ export function ProductsPage() {
                 <div className={styles.grid}>
                 {products.map((product) => (
                     <ProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
+                        key={product.id}
+                        product={product}
+                        onAddToCart={handleAddToCart}
                     />
                 ))}
                 </div>

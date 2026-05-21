@@ -25,27 +25,38 @@ router.get('/:userId', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const { userId, productId, quantity } = req.body;
 
-  // Check stock before adding to cart
-  const stockCheck = await db.query(
-    'SELECT quantity FROM inventory WHERE product_id = $1',
-    [productId]
-  );
-
-  if (!stockCheck.rows[0] || stockCheck.rows[0].quantity < quantity) {
-    return res.status(409).json({ error: 'Insufficient stock' });
+  if (!userId || !productId || !quantity) {
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Upsert: if item already in cart, increment quantity
-  const result = await db.query(
-    `INSERT INTO cart_items (user_id, product_id, quantity)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (user_id, product_id)
-     DO UPDATE SET quantity = cart_items.quantity + $3
-     RETURNING *`,
-    [userId, productId, quantity]
-  );
+  try {
 
-  return res.status(201).json(result.rows[0]);
+  
+    // Check stock before adding to cart
+    const stockCheck = await db.query(
+      'SELECT quantity FROM inventory WHERE product_id = $1',
+      [productId]
+    );
+
+    if (!stockCheck.rows[0] || stockCheck.rows[0].quantity < quantity) {
+      return res.status(409).json({ error: 'Insufficient stock' });
+    }
+
+    // Upsert: if item already in cart, increment quantity
+    const result = await db.query(
+      `INSERT INTO cart_items (user_id, product_id, quantity)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, product_id)
+      DO UPDATE SET quantity = cart_items.quantity + $3
+      RETURNING *`,
+      [userId, productId, quantity]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('POST Error adding to cart: ', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // DELETE /api/cart/:itemId — remove item
