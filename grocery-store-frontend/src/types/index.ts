@@ -20,6 +20,9 @@ export interface CartItem {
     id: string;
     product_id: string;
     name: string;
+    quantity: number;
+    price: number;
+    image_url: string;
 }
 
 export interface InventoryStatus {

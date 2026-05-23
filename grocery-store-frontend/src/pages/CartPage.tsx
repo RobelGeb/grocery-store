@@ -16,15 +16,15 @@ export function CartPage() {
     }, []);
 
     return (
-        <div>
+        <div className={styles.page}>
             <h1>Your Cart</h1>
             {loading ? (
                 <div className={styles.loading}>Loading items in your cart...</div>
             ) : (
                 <div className={styles.grid}>
-                {cartItems.map((item) => (
-                    <CartItemCard key={item.id} {...item} />
-                ))}
+                    {cartItems.map((item) => (
+                        <CartItemCard key={item.id} {...item} />
+                    ))}
                 </div>
             )}
         </div>
