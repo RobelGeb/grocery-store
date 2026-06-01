@@ -29,7 +29,7 @@ export function ProductsPage() {
     }, [selectedCategory]);
 
     const handleAddToCart = async (productId: string) => {
-        await api.addToCart('bdee0e0b-620d-4cfc-a4cb-cbe27bfe8e76', productId, 1);
+        await api.addToCart(import.meta.env.VITE_USER_ID, productId, 1);
     };
 
     return (
