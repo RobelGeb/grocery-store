@@ -11,7 +11,7 @@ export function CartPage() {
     });
 
     useEffect(() => {
-        api.getCart('bdee0e0b-620d-4cfc-a4cb-cbe27bfe8e76')
+        api.getCart(import.meta.env.VITE_USER_ID)
             .then(cartItems => setCartItemState({ cartItems, loading: false }));
     }, []);
 
