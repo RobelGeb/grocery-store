@@ -28,11 +28,6 @@ export function CartPage() {
 
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
-                <h1>Your Cart</h1>
-                {!loading && <p className={styles.itemCount}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</p>}
-            </div>
-
             {loading ? (
                 <div className={styles.loading}>Loading your cart...</div>
             ) : cartItems.length === 0 ? (
