@@ -1,5 +1,4 @@
 .card {
-    background: white;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     border: 1px solid #f3f4f6;
@@ -30,14 +29,14 @@
 
 .name     { 
     font-weight: 600; 
-    color: #111827; 
+    color: #f9fafb; 
     margin-bottom: 4px; 
 }
 
 .price    { 
     font-size: 1.125rem; 
     font-weight: 700; 
-    color: #111827; 
+    color: #f9fafb; 
     margin-bottom: 12px; 
 }
 
