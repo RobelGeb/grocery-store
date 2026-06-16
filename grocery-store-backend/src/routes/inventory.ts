@@ -8,14 +8,16 @@ const router = Router();
 // GET /api/inventory - get all inventory records (admin)
 router.get('/', async (req: Request, res: Response) => {
   const result = await db.query(
-    `SELECT quantity, low_stock_threshold FROM inventory`
+    `SELECT p.name, i.quantity, i.low_stock_threshold 
+    FROM inventory i
+    JOIN products p ON p.id = i.product_id`
   )
   
   if (!result.rows[0]) {
     return res.status(404).json({ error: 'Inventory record not found' });
   }
 
-  return res.json(result.rows);
+  return res.send(JSON.stringify(result.rows, null, 2));
 })
 
 

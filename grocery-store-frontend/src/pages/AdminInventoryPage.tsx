@@ -2,26 +2,32 @@ import { useState, useEffect } from 'react';
 import type { Product } from '../types';
 import { api } from '../api';
 import styles from './AdminInventoryPage.module.css'
+import { useAuth } from '../context/AuthContext';
 
 export function AdminInventoryPage() {
     const [products, setProducts] = useState<Product[]>([]);
+    const { accessToken, logout } = useAuth();
 
     useEffect(() => {
         api.getProducts().then(setProducts);
     }, []);
 
     const handleUpdateStock = async (productId: string, newQuantity: number) => {
-        await fetch(`/api/inventory/${productId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity: newQuantity, updatedBy: 'admin_user' }),
-        });
-        api.getProducts().then(setProducts);
+        if (!accessToken) return
+        try {
+            await api.updateInventory(productId, newQuantity, accessToken);
+            api.getProducts().then(setProducts);
+        } catch (err) {
+            if (err instanceof Response && err.status === 401) logout();
+        }
     };
 
     return (
         <div className={styles.page}>
-            <h1 className={styles.heading}>Admin Inventory</h1>
+            <div className={styles.header}>
+                <h1 className={styles.heading}>Admin Inventory</h1>
+                <button className={styles.signOutBtn} onClick={logout}>Sign out</button>
+            </div>
             <table className={styles.table}>
                 <thead>
                     <tr>

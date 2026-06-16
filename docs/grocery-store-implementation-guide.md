@@ -17,6 +17,7 @@ A step-by-step guide for building a full-stack grocery store website with invent
 9. [Image Storage (AWS S3)](#9-image-storage-aws-s3)
 10. [Deployment](#10-deployment)
 11. [Alternative Database Options](#11-alternative-database-options)
+12. [Admin Login Page](#12-admin-login-page)
 
 ---
 
@@ -1413,3 +1414,298 @@ Supabase is a Firebase alternative built on PostgreSQL. Their free tier has no t
 ---
 
 *Last updated: May 2026*
+
+---
+
+## 12. Admin Login Page
+
+### Overview
+
+When a user navigates to `/admin`, they are shown a login form instead of the inventory page if they are not authenticated. After successfully signing in with Cognito credentials, the access token is stored in React context and attached to all inventory API requests. The backend's existing `requireAdmin` middleware validates the token and checks group membership, so no backend changes are needed.
+
+### Auth Flow
+
+```
+User visits /admin
+       ↓
+RequireAdmin checks AuthContext for token
+       ↓
+  No token?              Token present?
+      ↓                       ↓
+AdminLoginPage        AdminInventoryPage
+(email/password)      (inventory table)
+      ↓
+Amplify signIn(email, password)
+      ↓
+Store accessToken in AuthContext (+ localStorage)
+      ↓
+Redirect → /admin (AdminInventoryPage)
+All /api/inventory calls include Authorization: Bearer <token>
+```
+
+### Files to Create
+
+| File | Purpose |
+|---|---|
+| `src/context/AuthContext.tsx` | React context holding the access token and login/logout functions |
+| `src/pages/AdminLoginPage.tsx` | Email + password form that calls Amplify `signIn` |
+| `src/pages/AdminLoginPage.module.css` | Styling for the login form |
+
+### Files to Modify
+
+| File | Change |
+|---|---|
+| `src/App.tsx` | Wrap the app in `AuthProvider`; protect `/admin` with `RequireAdmin` |
+| `src/api/index.ts` | Pass `Authorization: Bearer <token>` header on all inventory calls |
+
+---
+
+### Step 1 — Create `AuthContext.tsx`
+
+```tsx
+// src/context/AuthContext.tsx
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { signIn, signOut as amplifySignOut } from 'aws-amplify/auth';
+
+interface AuthContextType {
+  accessToken: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [accessToken, setAccessToken] = useState<string | null>(
+    localStorage.getItem('adminToken')
+  );
+
+  const login = async (email: string, password: string) => {
+    const { isSignedIn, nextStep } = await signIn({ username: email, password });
+    if (!isSignedIn) throw new Error(`Auth step required: ${nextStep.signInStep}`);
+
+    // Retrieve the access token from the active session
+    const { fetchAuthSession } = await import('aws-amplify/auth');
+    const session = await fetchAuthSession();
+    const token = session.tokens?.accessToken?.toString();
+    if (!token) throw new Error('No access token returned');
+
+    localStorage.setItem('adminToken', token);
+    setAccessToken(token);
+  };
+
+  const logout = () => {
+    amplifySignOut();
+    localStorage.removeItem('adminToken');
+    setAccessToken(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ accessToken, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
+}
+```
+
+---
+
+### Step 2 — Create `AdminLoginPage.tsx`
+
+```tsx
+// src/pages/AdminLoginPage.tsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import styles from './AdminLoginPage.module.css';
+
+export function AdminLoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+      navigate('/admin');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={styles.container}>
+      <form className={styles.form} onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+        <h2>Admin Login</h2>
+        {error && <p className={styles.error}>{error}</p>}
+        <label>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        <label>Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing in…' : 'Sign In'}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+Basic CSS (`AdminLoginPage.module.css`):
+
+```css
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 320px;
+  padding: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.form h2 {
+  margin: 0 0 0.5rem;
+}
+
+.form input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form button {
+  padding: 0.6rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0;
+}
+```
+
+---
+
+### Step 3 — Create `RequireAdmin` and update `App.tsx`
+
+```tsx
+// src/App.tsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProductsPage } from './components/ProductsPage';
+import { AdminInventoryPage } from './pages/AdminInventoryPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
+import { CartPage } from './pages/CartPage';
+
+function RequireAdmin({ children }: { children: JSX.Element }) {
+  const { accessToken } = useAuth();
+  return accessToken ? children : <AdminLoginPage />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<ProductsPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route
+            path="/admin"
+            element={
+              <RequireAdmin>
+                <AdminInventoryPage />
+              </RequireAdmin>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
+```
+
+`RequireAdmin` renders `AdminLoginPage` in place (same URL) if no token exists, avoiding a separate `/admin/login` route. After a successful login, it re-renders with the token present and shows `AdminInventoryPage`.
+
+---
+
+### Step 4 — Pass the token in API calls
+
+Update the inventory fetch in `src/api/index.ts` to include the `Authorization` header:
+
+```ts
+// Before
+export const getInventory = async () => {
+  const res = await fetch('/api/inventory');
+  return res.json();
+};
+
+// After
+export const getInventory = async (token: string) => {
+  const res = await fetch('/api/inventory', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+};
+```
+
+Add a **Sign Out** button in the admin page header that calls `logout()` from `useAuth()`.
+
+---
+
+### Token Expiry
+
+  Cognito access tokens expire after 1 hour by default. If a token stored in `localStorage` is expired, the backend will return `401`. Handle this in the API client:
+
+  ```ts
+  if (res.status === 401) {
+    logout();        // clear token, forces re-render of AdminLoginPage
+    return;
+  }
+```

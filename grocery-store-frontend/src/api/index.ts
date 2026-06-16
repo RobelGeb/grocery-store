@@ -16,9 +16,23 @@ export const api = {
         return res.json();
     },
 
-    getInventoryStatus: async (productId: string): Promise<InventoryStatus> => {
-        const res = await fetch(`${BASE_URL}/inventory/${productId}`);
+    getInventoryStatus: async (productId: string, token: string): Promise<InventoryStatus> => {
+        const res = await fetch(`${BASE_URL}/inventory/${productId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
         return res.json();
+    },
+
+    updateInventory: async (productId: string, quantity: number, token: string): Promise<void> => {
+        const res = await fetch(`${BASE_URL}/inventory/${productId}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({quantity, updatedBy: 'admin_user'}),
+        });
+        if (!res.ok) throw res;
     },
 
     getCart: async (userId: string): Promise<CartItem[]> => {
